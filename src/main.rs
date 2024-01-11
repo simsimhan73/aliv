@@ -10,7 +10,7 @@ use std::thread;
 async fn main() -> Result<(), Error>{
     dotenv().ok();
 
-    discord::run(env::var("BOT_TOKEN")?)?;
+    discord::run(env::var("BOT_TOKEN")?).await?;
 
     /* let handle = thread::spawn(|| {
         loop {
@@ -23,15 +23,16 @@ async fn main() -> Result<(), Error>{
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("error : get env error")]
+    #[error("Error : get env error")]
     VarError(#[from] std::env::VarError),
-    #[error("error : Addr parse error")]
+    #[error("Error : Addr parse error")]
     AddrParseError(#[from] std::net::AddrParseError),
-    #[error("error : io error")]
+    #[error("Error : io error")]
     IoError(#[from] std::io::Error),
-    #[error("error : json error")]
+    #[error("Error : json error")]
     JsonError(#[from] serde_json::Error),
-    #[error("")]
+    #[error("Error : WS error")]
+    WSSError(#[from] tokio_tungstenite::tungstenite::Error)
 }
 
 mod pixiv;

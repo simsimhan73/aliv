@@ -1,6 +1,8 @@
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use std::io::{Write, Read};
-use serde_json::{json};
+use futures_util::{SinkExt, StreamExt};
+use serde_json::{json, Number, Value};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use url::Url;
 
 use crate::Error;
 
@@ -11,15 +13,24 @@ pub async fn run(token : String) -> Result<(), Error>{
 
     let json = make_indentify_content(token);
 
-    let mut stream = connect_async(GATEWAY_URL).await?;
-    
-    stream.write(json.to_string().as_bytes())?;
+    let (mut stream , res)= connect_async(Url::parse(GATEWAY_URL)
+        .expect("Failed to parsing URL")).await.expect("Failed to connect");
 
-    let mut buf : String = "".to_string();
+    stream.send(Message::from(json.to_string())).await.expect("Failed to Sending message");
 
-    stream.read_to_string(&mut buf)?;
+    if let Some(msg) = stream.next().await {
+        let msg = json!(msg?.to_string());
+        println!("{}",msg);
+        if let Some(Value::Number(op)) = msg.get("op") {
+            if op {
+                let interval = msg.get("d").unwrap().get("heartbeat_interval").unwrap().as_u64();
+                println!("{:?}", interval);
+            }
+        }
 
-    println!("{:?}", buf);
+    }
+
+
 
     Ok(())
 }
@@ -32,7 +43,7 @@ fn make_indentify_content(token : String) -> serde_json::Value {
             "token" : token,
             "intent" : 16384,
             "properties": {
-                "os": "linux",
+                "os": "windows",
                 "browser": "my_library",
                 "device": "my_library"
               }
